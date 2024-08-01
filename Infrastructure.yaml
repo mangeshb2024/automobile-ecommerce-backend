@@ -62,7 +62,9 @@ Resources:
       BucketName: !Ref sourceDataS3Bucket
       NotificationConfiguration:
         LambdaConfigurations:
-          - Event: [s3:ObjectCreated:Put, s3:ObjectCreated:CompleteMultipartUpload]
+          - Event: s3:ObjectCreated:Put
+            Function: !GetAtt [ loadDataFunction, Arn]
+          - Event: s3:ObjectCreated:CompleteMultipartUpload
             Function: !GetAtt [ loadDataFunction, Arn]
 
   dataStaticS3Bucket:
