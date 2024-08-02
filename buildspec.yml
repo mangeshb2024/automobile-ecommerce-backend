@@ -4,7 +4,6 @@ phases:
   install:
     commands:
       - echo Entered the install phase...
-      - echo Input Stack Name is $STACK_NAME
     finally:
       - echo This always runs even if the update or install command fails 
   pre_build:
@@ -28,4 +27,3 @@ phases:
 artifacts:
   files:
     - Infrastructure.yaml
-  name: $STACK_NAME
