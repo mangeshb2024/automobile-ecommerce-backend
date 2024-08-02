@@ -481,6 +481,7 @@ Resources:
       Name: !Ref apiGatewayName
 
   # API Gateway Resources
+
   apiGatewayFiltersResource:
     Type: AWS::ApiGateway::Resource
     Properties:
@@ -499,6 +500,8 @@ Resources:
         - RootResourceId
       PathPart: cars
 
+  # API Gateway Methods
+  
   apiGatewayFiltersGETMethod:
     Type: AWS::ApiGateway::Method
     Properties:
