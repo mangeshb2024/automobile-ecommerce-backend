@@ -2,6 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 
 Description: "Template to create backend infrastructure for Automobile-ECommerce project"
 
+# Metadata section
 Metadata: 
   AWS::CloudFormation::Interface: 
     ParameterGroups: 
@@ -28,6 +29,7 @@ Metadata:
       sourceDataS3Bucket: 
         default: "Source S3 Bucket to store input CSV file to load data in Dynamodb tables"
 
+# Parameters section
 Parameters:
   sourceDataS3Bucket:
     Type: String
@@ -52,6 +54,7 @@ Parameters:
     AllowedPattern: '[a-z0-9]+'
     Default: prod
 
+#Resources section
 Resources:
 
 # S3 Buckets
