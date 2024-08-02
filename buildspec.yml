@@ -16,6 +16,7 @@ phases:
       - echo Entered the build phase...
       - echo Build started on `date`
       - aws s3 mb s3://automobile-ecommerce-lambda-source-new
+      - aws s3 cp Infrastructure.yaml s3://automobile-ecommerce-lambda-source-new
     finally:
       - echo This always runs even if the build command fails
   post_build:
