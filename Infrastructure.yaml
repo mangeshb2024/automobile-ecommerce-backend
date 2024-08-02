@@ -532,6 +532,7 @@ Resources:
 
 # API Gateway
 
+  #API Gateway
   apiGateway:
     Type: AWS::ApiGateway::RestApi
     Properties:
