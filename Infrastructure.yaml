@@ -59,7 +59,7 @@ Resources:
   copyAppData:
     Type: "Custom::S3Objects"
     Properties:
-      ServiceToken: !GetAtt CopyAppData.Arn
+      ServiceToken: !GetAtt CopyAppDataFunction.Arn
       SourceBucket: !Ref setupS3Bucket
       SourcePrefix: "AppData"
       Bucket: !Ref sourceDataS3Bucket
