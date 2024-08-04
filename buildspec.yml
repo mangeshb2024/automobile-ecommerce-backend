@@ -16,7 +16,8 @@ phases:
       - echo Entered the build phase...
       - echo Build started on `date`
       - aws s3 mb s3://automobile-ecommerce-lambda-source
-      - aws s3 cp LambdaSourceZips s3://automobile-ecommerce-lambda-source --recursive
+      - aws s3 cp LambdaSourceZips s3://automobile-ecommerce-setup --recursive
+      - aws s3 cp AppData s3://automobile-ecommerce-setup --recursive
     finally:
       - echo This always runs even if the build command fails
   post_build:
