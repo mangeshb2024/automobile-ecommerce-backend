@@ -82,6 +82,8 @@ Resources:
             Function: !GetAtt loadDataFunction.Arn
           - Event: s3:ObjectCreated:CompleteMultipartUpload
             Function: !GetAtt loadDataFunction.Arn
+          - Event: s3:ObjectCreated:Copy
+            Function: !GetAtt loadDataFunction.Arn
 
   dataStaticS3Bucket:
     Type: AWS::S3::Bucket
@@ -503,7 +505,7 @@ Resources:
             source_prefix = event['ResourceProperties'].get('SourcePrefix') or ''
             bucket = event['ResourceProperties']['Bucket']
             prefix = event['ResourceProperties'].get('Prefix') or ''
-            static_data_bucket = event['ResourceProperties']['StaticDataBucket'] 
+            static_data_bucket = event['ResourceProperties']['StaticDataBucket'] or ''
 
             result = cfnresponse.SUCCESS
 
@@ -533,7 +535,7 @@ Resources:
           def delete_objects(bucket, static_data_bucket, prefix, static_data_prefix):
             paginator = client.get_paginator('list_objects_v2')
             #page_iterator = paginator.paginate(Bucket=bucket, Prefix=prefix)
-            page_iterator = paginator.paginate(Bucket=static_data_bucket, Prefix=static_data_prefix)
+            page_iterator = paginator.paginate(Bucket=static_data_bucket)
             objects = [{'Key': x['Key']} for page in page_iterator for x in page['Contents']]
             client.delete_objects(Bucket=static_data_bucket, Delete={'Objects': objects})
             return cfnresponse.SUCCESS
