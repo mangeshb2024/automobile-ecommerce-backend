@@ -72,6 +72,8 @@ Resources:
     DependsOn: 
       - S3LambdaInvokePermission
       - loadDataFunction
+      - filterTable
+      - dataTable
     Properties:
       BucketName: !Ref sourceDataS3Bucket
       NotificationConfiguration:
@@ -539,9 +541,6 @@ Resources:
   loadDataFunction:
     Type: AWS::Lambda::Function
     Properties:
-      DependsOn: 
-        - filterTable
-        - dataTable
       Code:
         S3Bucket: !Ref setupS3Bucket
         S3Key: loadCarsData.zip
