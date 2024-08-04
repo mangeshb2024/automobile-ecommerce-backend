@@ -506,6 +506,7 @@ Resources:
             bucket = event['ResourceProperties']['Bucket']
             prefix = event['ResourceProperties'].get('Prefix') or ''
             static_data_bucket = event['ResourceProperties']['StaticDataBucket'] or ''
+            static_data_prefix = event['ResourceProperties'].get('Static_Data_Prefix') or ''
 
             result = cfnresponse.SUCCESS
 
@@ -513,7 +514,7 @@ Resources:
               if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
                 result = copy_objects(source_bucket, source_prefix, bucket, prefix)
               elif event['RequestType'] == 'Delete':
-                result = delete_objects(bucket, prefix)
+                result = delete_objects(bucket, source_prefix, prefix, static_data_prefix)
             except ClientError as e:
               logger.error('Error: %s', e)
               result = cfnresponse.FAILED
