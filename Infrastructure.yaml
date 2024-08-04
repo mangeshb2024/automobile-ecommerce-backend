@@ -62,13 +62,16 @@ Resources:
       ServiceToken: !GetAtt CopyAppDataFunction.Arn
       SourceBucket: !Ref setupS3Bucket
       SourcePrefix: "AppData"
-      Bucket: !Ref sourceDataS3Bucket
+      Bucket: !Ref dataSourceS3Bucket
+      StaticDataBucket: !Ref dataStaticS3Bucket
 
 
   # S3 Buckets
   dataSourceS3Bucket:
     Type: AWS::S3::Bucket
-    DependsOn: S3LambdaInvokePermission
+    DependsOn: 
+      - S3LambdaInvokePermission
+      - loadDataFunction
     Properties:
       BucketName: !Ref sourceDataS3Bucket
       NotificationConfiguration:
@@ -155,8 +158,8 @@ Resources:
                   - "s3:ListBucket"
                   - "s3:GetObject"
                 Resource:
-                  - !Sub "arn:aws:s3:::{setupS3Bucket}"
-                  - !Sub "arn:aws:s3:::{setupS3Bucket}/*"
+                  - !Sub "arn:aws:s3:::${setupS3Bucket}"
+                  - !Sub "arn:aws:s3:::${setupS3Bucket}/*"
               -
                 Sid: WriteToBucket
                 Effect: Allow
@@ -170,8 +173,23 @@ Resources:
                   - "s3:DeleteObjectVersion"
                   - "s3:CopyObject"
                 Resource:
-                  - !Sub "arn:aws:s3:::${sourceDataS3Bucket}"
-                  - !Sub "arn:aws:s3:::${sourceDataS3Bucket}/*"
+                  - !Sub "arn:aws:s3:::${dataSourceS3Bucket}"
+                  - !Sub "arn:aws:s3:::${dataSourceS3Bucket}/*"
+              -
+                Sid: DeleteFromStaticBucket
+                Effect: Allow
+                Action:
+                  - "s3:ListBucket"
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                  - "s3:PutObjectAcl"
+                  - "s3:PutObjectVersionAcl"
+                  - "s3:DeleteObject"
+                  - "s3:DeleteObjectVersion"
+                  - "s3:CopyObject"
+                Resource:
+                  - !Sub "arn:aws:s3:::${dataStaticS3Bucket}"
+                  - !Sub "arn:aws:s3:::${dataStaticS3Bucket}/*"
 
   loadDataLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -483,6 +501,7 @@ Resources:
             source_prefix = event['ResourceProperties'].get('SourcePrefix') or ''
             bucket = event['ResourceProperties']['Bucket']
             prefix = event['ResourceProperties'].get('Prefix') or ''
+            static_data_bucket = event['ResourceProperties']['StaticDataBucket'] 
 
             result = cfnresponse.SUCCESS
 
@@ -509,16 +528,20 @@ Resources:
                 client.copy(CopySource, bucket, key)
             return cfnresponse.SUCCESS
 
-          def delete_objects(bucket, prefix):
+          def delete_objects(bucket, static_data_bucket, prefix, static_data_prefix):
             paginator = client.get_paginator('list_objects_v2')
-            page_iterator = paginator.paginate(Bucket=bucket, Prefix=prefix)
+            #page_iterator = paginator.paginate(Bucket=bucket, Prefix=prefix)
+            page_iterator = paginator.paginate(Bucket=static_data_bucket, Prefix=static_data_prefix)
             objects = [{'Key': x['Key']} for page in page_iterator for x in page['Contents']]
-            client.delete_objects(Bucket=bucket, Delete={'Objects': objects})
+            client.delete_objects(Bucket=static_data_bucket, Delete={'Objects': objects})
             return cfnresponse.SUCCESS
 
   loadDataFunction:
     Type: AWS::Lambda::Function
     Properties:
+      DependsOn: 
+        - filterTable
+        - dataTable
       Code:
         S3Bucket: !Ref setupS3Bucket
         S3Key: loadCarsData.zip
