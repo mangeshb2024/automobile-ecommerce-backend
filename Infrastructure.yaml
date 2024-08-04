@@ -1,30 +1,31 @@
-AWSTemplateFormatVersion: "2010-09-09"
+AWSTemplateFormatVersion: '2010-09-09'
 
-Description: "Template to create backend infrastructure for Automobile-ECommerce project"
+Description: Template to create backend infrastructure for Automobile-ECommerce project
 
 # Metadata section
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: "S3 Parameters"
+          default: S3 Parameters
         Parameters:
           - sourceDataS3Bucket
           - staticDataS3Bucket
-          - lambdaSourceS3Bucket
+          - setupS3Bucket
       - Label:
-          default: "DynamoDB Parameters"
+          default: DynamoDB Parameters
         Parameters:
           - dynamoDBTableName
           - dynamoDBFilterTableName
       - Label:
-          default: "API Gateway Parameters"
+          default: API Gateway Parameters
         Parameters:
           - apiGatewayName
           - apiGatewayStageName
     ParameterLabels:
       sourceDataS3Bucket:
-        default: "Source S3 Bucket to store input CSV file to load data in Dynamodb tables"
+        default: Source S3 Bucket to store input CSV file to load data in Dynamodb
+          tables
 
 # Parameters section
 Parameters:
@@ -34,9 +35,9 @@ Parameters:
   staticDataS3Bucket:
     Type: String
     Default: automobile-ecommerce-static-data
-  lambdaSourceS3Bucket:
+  setupS3Bucket:
     Type: String
-    Default: automobile-ecommerce-lambda-source
+    Default: automobile-ecommerce-setup
   dynamoDBTableName:
     Type: String
     Default: automobileDataTable
@@ -48,11 +49,22 @@ Parameters:
     Default: automobileAPI
   apiGatewayStageName:
     Type: String
-    AllowedPattern: "[a-z0-9]+"
+    AllowedPattern: '[a-z0-9]+'
     Default: prod
 
 #Resources section
 Resources:
+
+  #Custom Resources
+  copyAppData:
+    Type: "Custom::S3Objects"
+    Properties:
+      ServiceToken: !GetAtt CopyAppData.Arn
+      SourceBucket: !Ref setupS3Bucket
+      SourcePrefix: "AppData"
+      Bucket: !Ref sourceDataS3Bucket
+
+
   # S3 Buckets
   dataSourceS3Bucket:
     Type: AWS::S3::Bucket
@@ -62,9 +74,9 @@ Resources:
       NotificationConfiguration:
         LambdaConfigurations:
           - Event: s3:ObjectCreated:Put
-            Function: !GetAtt [loadDataFunction, Arn]
+            Function: !GetAtt loadDataFunction.Arn
           - Event: s3:ObjectCreated:CompleteMultipartUpload
-            Function: !GetAtt [loadDataFunction, Arn]
+            Function: !GetAtt loadDataFunction.Arn
 
   dataStaticS3Bucket:
     Type: AWS::S3::Bucket
@@ -76,14 +88,10 @@ Resources:
     Type: AWS::Lambda::Permission
     DependsOn: loadDataFunction
     Properties:
-      FunctionName:
-        Fn::GetAtt:
-          - loadDataFunction
-          - Arn
+      FunctionName: !GetAtt loadDataFunction.Arn
       Action: lambda:InvokeFunction
       Principal: s3.amazonaws.com
-      SourceArn:
-        Fn::Sub: arn:aws:s3:::${sourceDataS3Bucket}
+      SourceArn: !Sub arn:aws:s3:::${sourceDataS3Bucket}
 
   # SSM Parameters
   SSMParamDynamoDBTable:
@@ -114,18 +122,69 @@ Resources:
       Value: !Ref staticDataS3Bucket
 
   # IAM Roles
+  copyAppDataExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        -
+          PolicyName: S3Access
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Sid: AllowLogging
+                Effect: Allow
+                Action:
+                  - "logs:CreateLogGroup"
+                  - "logs:CreateLogStream"
+                  - "logs:PutLogEvents"
+                Resource: "*"
+              -
+                Sid: ReadFromBucket
+                Effect: Allow
+                Action:
+                  - "s3:ListBucket"
+                  - "s3:GetObject"
+                Resource:
+                  - !Sub "arn:aws:s3:::{setupS3Bucket}"
+                  - !Sub "arn:aws:s3:::{setupS3Bucket}/*"
+              -
+                Sid: WriteToBucket
+                Effect: Allow
+                Action:
+                  - "s3:ListBucket"
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                  - "s3:PutObjectAcl"
+                  - "s3:PutObjectVersionAcl"
+                  - "s3:DeleteObject"
+                  - "s3:DeleteObjectVersion"
+                  - "s3:CopyObject"
+                Resource:
+                  - !Sub "arn:aws:s3:::${sourceDataS3Bucket}"
+                  - !Sub "arn:aws:s3:::${sourceDataS3Bucket}/*"
+
   loadDataLambdaExecutionRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
               Service:
                 - lambda.amazonaws.com
             Action:
-              - "sts:AssumeRole"
+              - sts:AssumeRole
       Description: IAM Execution Role for loadData Lambda function
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -138,14 +197,14 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
               Service:
                 - lambda.amazonaws.com
             Action:
-              - "sts:AssumeRole"
+              - sts:AssumeRole
       Description: IAM Execution Role for fetchFilters Lambda function
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -157,14 +216,14 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
               Service:
                 - lambda.amazonaws.com
             Action:
-              - "sts:AssumeRole"
+              - sts:AssumeRole
       Description: IAM Execution Role for fetchCarsData Lambda function
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -177,14 +236,14 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
-        Version: "2012-10-17"
+        Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
               Service:
                 - lambda.amazonaws.com
             Action:
-              - "sts:AssumeRole"
+              - sts:AssumeRole
       Description: IAM Execution Role for updateCarsData Lambda function
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
@@ -197,211 +256,271 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-        - AttributeName: "filterColumn"
-          AttributeType: "S"
+        - AttributeName: filterColumn
+          AttributeType: S
       KeySchema:
-        - AttributeName: "filterColumn"
-          KeyType: "HASH"
+        - AttributeName: filterColumn
+          KeyType: HASH
       ProvisionedThroughput:
-        ReadCapacityUnits: "1"
-        WriteCapacityUnits: "1"
+        ReadCapacityUnits: '1'
+        WriteCapacityUnits: '1'
       TableName: !Ref dynamoDBFilterTableName
 
   dataTable:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-        - AttributeName: "manufacturer"
-          AttributeType: "S"
-        - AttributeName: "vehicletype"
-          AttributeType: "S"
-        - AttributeName: "bodytype"
-          AttributeType: "S"
-        - AttributeName: "model"
-          AttributeType: "S"
-        - AttributeName: "engine"
-          AttributeType: "S"
-        - AttributeName: "fuel"
-          AttributeType: "S"
-        - AttributeName: "transmission"
-          AttributeType: "S"
+        - AttributeName: manufacturer
+          AttributeType: S
+        - AttributeName: vehicletype
+          AttributeType: S
+        - AttributeName: bodytype
+          AttributeType: S
+        - AttributeName: model
+          AttributeType: S
+        - AttributeName: engine
+          AttributeType: S
+        - AttributeName: fuel
+          AttributeType: S
+        - AttributeName: transmission
+          AttributeType: S
       KeySchema:
-        - AttributeName: "manufacturer"
-          KeyType: "HASH"
-        - AttributeName: "model"
-          KeyType: "RANGE"
+        - AttributeName: manufacturer
+          KeyType: HASH
+        - AttributeName: model
+          KeyType: RANGE
       ProvisionedThroughput:
-        ReadCapacityUnits: "1"
-        WriteCapacityUnits: "1"
+        ReadCapacityUnits: '1'
+        WriteCapacityUnits: '1'
       TableName: !Ref dynamoDBTableName
       GlobalSecondaryIndexes:
-        - IndexName: "gsi_bodytype_model"
+        - IndexName: gsi_bodytype_model
           KeySchema:
-            - AttributeName: "bodytype"
-              KeyType: "HASH"
-            - AttributeName: "model"
-              KeyType: "RANGE"
+            - AttributeName: bodytype
+              KeyType: HASH
+            - AttributeName: model
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_bodytype_engine"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_bodytype_engine
           KeySchema:
-            - AttributeName: "bodytype"
-              KeyType: "HASH"
-            - AttributeName: "engine"
-              KeyType: "RANGE"
+            - AttributeName: bodytype
+              KeyType: HASH
+            - AttributeName: engine
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_bodytype_fuel"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_bodytype_fuel
           KeySchema:
-            - AttributeName: "bodytype"
-              KeyType: "HASH"
-            - AttributeName: "fuel"
-              KeyType: "RANGE"
+            - AttributeName: bodytype
+              KeyType: HASH
+            - AttributeName: fuel
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_bodytype_transmission"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_bodytype_transmission
           KeySchema:
-            - AttributeName: "bodytype"
-              KeyType: "HASH"
-            - AttributeName: "transmission"
-              KeyType: "RANGE"
+            - AttributeName: bodytype
+              KeyType: HASH
+            - AttributeName: transmission
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_model_engine"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_model_engine
           KeySchema:
-            - AttributeName: "model"
-              KeyType: "HASH"
-            - AttributeName: "engine"
-              KeyType: "RANGE"
+            - AttributeName: model
+              KeyType: HASH
+            - AttributeName: engine
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_model_fuel"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_model_fuel
           KeySchema:
-            - AttributeName: "model"
-              KeyType: "HASH"
-            - AttributeName: "fuel"
-              KeyType: "RANGE"
+            - AttributeName: model
+              KeyType: HASH
+            - AttributeName: fuel
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_model_transmission"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_model_transmission
           KeySchema:
-            - AttributeName: "model"
-              KeyType: "HASH"
-            - AttributeName: "transmission"
-              KeyType: "RANGE"
+            - AttributeName: model
+              KeyType: HASH
+            - AttributeName: transmission
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_engine_fuel"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_engine_fuel
           KeySchema:
-            - AttributeName: "engine"
-              KeyType: "HASH"
-            - AttributeName: "fuel"
-              KeyType: "RANGE"
+            - AttributeName: engine
+              KeyType: HASH
+            - AttributeName: fuel
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_engine_transmission"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_engine_transmission
           KeySchema:
-            - AttributeName: "engine"
-              KeyType: "HASH"
-            - AttributeName: "transmission"
-              KeyType: "RANGE"
+            - AttributeName: engine
+              KeyType: HASH
+            - AttributeName: transmission
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_fuel_transmission"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_fuel_transmission
           KeySchema:
-            - AttributeName: "fuel"
-              KeyType: "HASH"
-            - AttributeName: "transmission"
-              KeyType: "RANGE"
+            - AttributeName: fuel
+              KeyType: HASH
+            - AttributeName: transmission
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
-        - IndexName: "gsi_transmission"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
+        - IndexName: gsi_transmission
           KeySchema:
-            - AttributeName: "transmission"
-              KeyType: "HASH"
+            - AttributeName: transmission
+              KeyType: HASH
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
           ProvisionedThroughput:
-            ReadCapacityUnits: "1"
-            WriteCapacityUnits: "1"
+            ReadCapacityUnits: '1'
+            WriteCapacityUnits: '1'
       LocalSecondaryIndexes:
-        - IndexName: "lsi_bodytype"
+        - IndexName: lsi_bodytype
           KeySchema:
-            - AttributeName: "manufacturer"
-              KeyType: "HASH"
-            - AttributeName: "bodytype"
-              KeyType: "RANGE"
+            - AttributeName: manufacturer
+              KeyType: HASH
+            - AttributeName: bodytype
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
-        - IndexName: "lsi_vehicletype"
+            ProjectionType: ALL
+        - IndexName: lsi_vehicletype
           KeySchema:
-            - AttributeName: "manufacturer"
-              KeyType: "HASH"
-            - AttributeName: "vehicletype"
-              KeyType: "RANGE"
+            - AttributeName: manufacturer
+              KeyType: HASH
+            - AttributeName: vehicletype
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
-        - IndexName: "lsi_engine"
+            ProjectionType: ALL
+        - IndexName: lsi_engine
           KeySchema:
-            - AttributeName: "manufacturer"
-              KeyType: "HASH"
-            - AttributeName: "engine"
-              KeyType: "RANGE"
+            - AttributeName: manufacturer
+              KeyType: HASH
+            - AttributeName: engine
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
-        - IndexName: "lsi_fuel"
+            ProjectionType: ALL
+        - IndexName: lsi_fuel
           KeySchema:
-            - AttributeName: "manufacturer"
-              KeyType: "HASH"
-            - AttributeName: "fuel"
-              KeyType: "RANGE"
+            - AttributeName: manufacturer
+              KeyType: HASH
+            - AttributeName: fuel
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
-        - IndexName: "lsi_transmission"
+            ProjectionType: ALL
+        - IndexName: lsi_transmission
           KeySchema:
-            - AttributeName: "manufacturer"
-              KeyType: "HASH"
-            - AttributeName: "transmission"
-              KeyType: "RANGE"
+            - AttributeName: manufacturer
+              KeyType: HASH
+            - AttributeName: transmission
+              KeyType: RANGE
           Projection:
-            ProjectionType: "ALL"
+            ProjectionType: ALL
 
   # Lambda Functions
+  CopyAppDataFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Copies App data CSV and image files into source data bucket
+      Handler: index.handler
+      Runtime: python3.12
+      Role: !GetAtt copyAppDataExecutionRole.Arn
+      Timeout: 120
+      Code:
+        ZipFile: |
+          import os 
+          import json
+          import cfnresponse
+          import boto3
+          import logging
+
+          from botocore.exceptions import ClientError
+          client = boto3.client('s3')
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          def handler(event, context):
+            logger.info("Received event: %s" % json.dumps(event))
+            source_bucket = event['ResourceProperties']['SourceBucket']
+            source_prefix = event['ResourceProperties'].get('SourcePrefix') or ''
+            bucket = event['ResourceProperties']['Bucket']
+            prefix = event['ResourceProperties'].get('Prefix') or ''
+
+            result = cfnresponse.SUCCESS
+
+            try:
+              if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
+                result = copy_objects(source_bucket, source_prefix, bucket, prefix)
+              elif event['RequestType'] == 'Delete':
+                result = delete_objects(bucket, prefix)
+            except ClientError as e:
+              logger.error('Error: %s', e)
+              result = cfnresponse.FAILED
+
+            cfnresponse.send(event, context, result, {})
+
+          def copy_objects(source_bucket, source_prefix, bucket, prefix):
+            paginator = client.get_paginator('list_objects_v2')
+            page_iterator = paginator.paginate(Bucket=source_bucket, Prefix=source_prefix)
+            for key in {x['Key'] for page in page_iterator for x in page['Contents']}:
+              #dest_key = os.path.join(prefix, os.path.relpath(key, source_prefix))
+              if not key.endswith('/'):
+                #print('copy {} to {}'.format(key, dest_key))
+                #client.copy_object(CopySource={'Bucket': source_bucket, 'Key': key}, Bucket=bucket, Key = dest_key)
+                CopySource={'Bucket': source_bucket, 'Key': key}
+                client.copy(CopySource, bucket, key)
+            return cfnresponse.SUCCESS
+
+          def delete_objects(bucket, prefix):
+            paginator = client.get_paginator('list_objects_v2')
+            page_iterator = paginator.paginate(Bucket=bucket, Prefix=prefix)
+            objects = [{'Key': x['Key']} for page in page_iterator for x in page['Contents']]
+            client.delete_objects(Bucket=bucket, Delete={'Objects': objects})
+            return cfnresponse.SUCCESS
+
   loadDataFunction:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        S3Bucket: !Ref lambdaSourceS3Bucket
+        S3Bucket: !Ref setupS3Bucket
         S3Key: loadCarsData.zip
       Description: A Lambda function to load data from a csv file to a DynamoDB table
       Environment:
@@ -420,7 +539,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        S3Bucket: !Ref lambdaSourceS3Bucket
+        S3Bucket: !Ref setupS3Bucket
         S3Key: fetchFilters.zip
       Description: A Lambda function to retrieve filters from a DynamoDB table
       Environment:
@@ -437,9 +556,10 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        S3Bucket: !Ref lambdaSourceS3Bucket
+        S3Bucket: !Ref setupS3Bucket
         S3Key: fetchCarsData.zip
-      Description: A Lambda function to retrieve data from a DynamoDB table based on input parameters
+      Description: A Lambda function to retrieve data from a DynamoDB table based on
+        input parameters
       Environment:
         Variables:
           DYNAMODB_TAB_PARAM_NAME: !GetAtt SSMParamDynamoDBTable.Name
@@ -455,7 +575,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        S3Bucket: !Ref lambdaSourceS3Bucket
+        S3Bucket: !Ref setupS3Bucket
         S3Key: updateCarsData.zip
       Description: A Lambda function to update data of a single record
       Environment:
@@ -486,22 +606,18 @@ Resources:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref apiGateway
-      ParentId: !GetAtt
-        - apiGateway
-        - RootResourceId
+      ParentId: !GetAtt apiGateway.RootResourceId
       PathPart: filters
 
   apiGatewayCarsResource:
     Type: AWS::ApiGateway::Resource
     Properties:
       RestApiId: !Ref apiGateway
-      ParentId: !GetAtt
-        - apiGateway
-        - RootResourceId
+      ParentId: !GetAtt apiGateway.RootResourceId
       PathPart: cars
 
   # API Gateway Methods
-  
+
   apiGatewayFiltersGETMethod:
     Type: AWS::ApiGateway::Method
     Properties:
