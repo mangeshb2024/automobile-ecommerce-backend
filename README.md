@@ -630,9 +630,9 @@ APIs can not be accessed unless they are deployed into stage. This is achieved b
       RestApiId: !Ref apiGateway
       StageName: !Ref apiGatewayStageName
 
-### Provisioning and Hosting services
+### Provisioning and Deployment
 
-#### CloudFormation, CodeBuild, CodeDeploy
+#### CloudFormation, CodePipeline
 
 ### Version Control
 
@@ -668,12 +668,49 @@ Once the error is resolved, proceed with remaining commands.
     git remote add origin https://github.com/<github account name>/automobile-ecommerce-backend.git
     git push -u origin main
 
-## Build and Deployment
+## Build, Provisioning, and Deployment
 
 ### Build
 
-Backend services such as Dynamodb, AWS Lambda and API Gateway do not need building as such. These services can be created using management console and can be unit tested. Once tested successfully, these can be deployed using CloudFormation.
+Backend services such as Dynamodb, AWS Lambda and API Gateway do not need building as such. These services can be created using management console and can be unit tested. Once tested successfully, these can be provisioned using CloudFormation.
+
+### Provisioning
+
+CloudFormation is used for provisioning of resources. The template 'Infrastructure.yaml' will be used by CloudFormation service to provision all the resources explained in the implementation section above.
 
 ### Deployment
 
-Use CloudFormation to deploy backend services.
+The provisioining and deployment process is further automated by using CodePipeline. The flow of operations is as below.
+
+A CodePipeline is created for deployment of CloudFormation template as well as loading of initial data into the DynamoDB tables as well static data into S3 Bucket.
+
+**Source**
+
+For Source provider, select GitHub (Version 2) 
+
+Connect to this GitHub account by creating a new connection.
+
+For repository name, select automobile-ecommerce-backend.
+
+For Default branch, select main.
+
+For Trigger, select below values.
+
+Trigger type: Specify filter
+Event type: Push
+Filter type: Branch
+Branches:
+    Include: main
+File paths (optional):
+    Include: Infrastructure.yaml
+
+**Build**
+
+For Build, select Build provider as AWS CodeBuild
+
+Create a project with default settings, except that for Buildspec select "Use a buildspec file".
+
+buildspec.yml
+
+
+
