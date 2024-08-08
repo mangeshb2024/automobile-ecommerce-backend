@@ -630,3 +630,50 @@ APIs can not be accessed unless they are deployed into stage. This is achieved b
       RestApiId: !Ref apiGateway
       StageName: !Ref apiGatewayStageName
 
+### Provisioning and Hosting services
+
+#### CloudFormation, CodeBuild, CodeDeploy
+
+### Version Control
+
+**git and GitHub** - git is used for maintaing versions for the code base on the local system while a repository is created to push the code base to GitHub.
+
+### Set up the project on local machine
+
+Create a directory on local system call 'automobile-ecommerce-backend'.
+Create Lambda function python files and CloudFormation yml templates locally in the above folder and edit using Visual Studio Code editor.
+Once created, set up the git repository as per below instructions
+
+### Setup the git repository
+
+Signup or Login to GitHub (https://github.com/) and create a new repository for the project.
+
+Download and install git on your local machine. (https://git-scm.com/download)
+
+Initialize local git repository by executing below commands.
+
+    cd automobile-ecommerce-backend
+    echo "# automobile-ecommerce-backend" >> README.md
+    git init
+    git add .
+
+If you get a permission error for .config directory while executing git add command, then it can be resolved by granting below permission in sudo mode.
+
+    sudo chown -R $(whoami) /Users/<user>/.config
+
+Once the error is resolved, proceed with remaining commands.
+
+    git commit -m "first commit"
+    git branch -M main
+    git remote add origin https://github.com/<github account name>/automobile-ecommerce-backend.git
+    git push -u origin main
+
+## Build and Deployment
+
+### Build
+
+Backend services such as Dynamodb, AWS Lambda and API Gateway do not need building as such. These services can be created using management console and can be unit tested. Once tested successfully, these can be deployed using CloudFormation.
+
+### Deployment
+
+Use CloudFormation to deploy backend services.
