@@ -12,7 +12,7 @@
 
 The purpose of this project is to demonstrate hands on knowledge about different frontend and backend technologies. Though the functionalities implemented in this project can also be implemented using fully managed services which do not need any coding and require very little configuration, the effort is made to use individual services and make them interact with each other in order to gain hands on experience.
 
-Automobile ECommerce project is about allowing users to browse different kinds of cars, provide information, and filter based on various criteria. In the first phase, only a single page website is designed which will allow users to browse different cars and can filter the search results based on various attributes. In the coming phases additional functionality will be added to make new features available such as user authentication, save favorites and more. The final goal is to mimic a full fleged ecommerce website to make it a one stop shop for automobile buyers.
+Automobile ECommerce project is about allowing users to browse different kinds of cars, provide information, and filter based on various criteria. In the first phase, only a single page website is designed which will allow users to browse different cars and can filter the search results based on various attributes. In the coming phases additional functionality will be added to make new features available such as user authentication, save favorites and more. The final goal is to mimic a full fledged ecommerce website to make it a one stop shop for automobile buyers.
 
 ### Overview of the functionality
 
